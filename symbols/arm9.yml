@@ -81,6 +81,7 @@ arm9:
       address:
         EU: 0x2000AB0
         NA: 0x2000AB0
+      description: "Runs a bunch of mcr p15 (writes to the CP15 system control coprocessor, see https://problemkaputt.de/gbatek.htm#armcp15systemcontrolcoprocessor) instructions to configure the system. This includes configuring the ITCM (virtual size of 0x2000000) and DTCM (base of DTCM_BASE and virtual size of 0x4000)."
     - name: OSi_ReferSymbol
       address:
         EU: 0x2000B9C
@@ -557,6 +558,15 @@ arm9:
         This is called on fatal errors to hang the program indefinitely.
         
         No params.
+    - name: StartThreadWrapper
+      address:
+        NA: 0x2002778
+      description: |-
+        Seems to wrap StartThread with some other logic.
+        
+        r0: some struct pointer containing the thread to start
+        r1: some struct pointer containing the thread function to run
+        r2: some thread pointer (r2 for StartThread)
     - name: InterruptMasterDisable
       address:
         EU: 0x20030CC
@@ -718,6 +728,14 @@ arm9:
         See https://problemkaputt.de/gbatek.htm#dsiomaps.
         
         return: old value in the IME register
+    - name: IrqHandlerLcdVBlank
+      address:
+        NA: 0x2003704
+      description: "IRQ handler for interrupt type 0, LCD V-Blank (see https://problemkaputt.de/gbatek.htm#dsinterrupts)."
+    - name: ThreadMain
+      address:
+        NA: 0x2003780
+      description: "The thread function for the \"main\" thread that calls MainLoop. This thread is started from TaskProcBoot."
     - name: GetTime
       address:
         EU: 0x20037B4
@@ -738,6 +756,10 @@ arm9:
         See https://problemkaputt.de/gbatek.htm#dsiomaps.
         
         return: old value in the IME register
+    - name: RegisterCoroutine
+      address:
+        NA: 0x200383C
+      description: Seems to be the function called by GroundMainLoop/RunDungeonMode to register its maintenance coroutine (CoroutineGroundMain/CoroutineDungeonMaint) to be called in the TaskProcBoot loop.
     - name: SoundResume
       address:
         EU: 0x2003CC4
@@ -5065,6 +5087,13 @@ arm9:
         
         r0: window_id
         return: contents
+    - name: UpdateWindows
+      address:
+        NA: 0x2028848
+      description: |-
+        Appears to call the update function on all active windows.
+        
+        In ground mode, this is called within GroundMainLoop repeatedly. In dungeon mode, this is called by CoroutineDungeonMaint repeatedly.
     - name: LoadCursors
       address:
         EU: 0x2029800
@@ -10862,6 +10891,87 @@ arm9:
       address:
         EU: 0x2078C7C
         NA: 0x20788E4
+    - name: IrqHandlerEmpty
+      address:
+        NA: 0x2078974
+      description: |-
+        An empty IRQ handler that returns immediately. Assigned to the following interrupt types (see https://problemkaputt.de/gbatek.htm#dsinterrupts) in the interrupt vector:
+        - 1: LCD H-Blank
+        - 7: SIO/RCNT/RTC (note: ARM7 only)
+        - 12: Keypad
+        - 13: GBA-Slot
+        - 14: unused
+        - 15: unused
+        - 16: IPC Sync
+        - 17: IPC Send FIFO Empty
+        - 19: NDS-Slot Game Card Data Transfer Completion
+        - 20: NDS-Slot Game Card IREQ_MC
+        - 21: Geometry Command FIFO
+    - name: IrqHandleTimerOverflowAndDma
+      address:
+        NA: 0x2078978
+      description: |-
+        Implementation of the IRQ handlers for all timer overflow and DMA interrupts.
+        
+        Its parameter is used to index a list of function pointers. The game then jumps to the read pointer.
+        
+        r0: Index of the function to jump to
+    - name: IrqHandlerDma0
+      address:
+        NA: 0x2078A00
+      description: |-
+        IRQ handler for interrupt type 8, DMA 0 (see https://problemkaputt.de/gbatek.htm#dsinterrupts).
+        
+        Calls IrqHandleTimerOverflowAndDma(0)
+    - name: IrqHandlerDma1
+      address:
+        NA: 0x2078A10
+      description: |-
+        IRQ handler for interrupt type 9, DMA 1 (see https://problemkaputt.de/gbatek.htm#dsinterrupts).
+        
+        Calls IrqHandleTimerOverflowAndDma(1)
+    - name: IrqHandlerDma2
+      address:
+        NA: 0x2078A20
+      description: |-
+        IRQ handler for interrupt type 10, DMA 2 (see https://problemkaputt.de/gbatek.htm#dsinterrupts).
+        
+        Calls IrqHandleTimerOverflowAndDma(2)
+    - name: IrqHandlerDma3
+      address:
+        NA: 0x2078A30
+      description: |-
+        IRQ handler for interrupt type 11, DMA 3 (see https://problemkaputt.de/gbatek.htm#dsinterrupts).
+        
+        Calls IrqHandleTimerOverflowAndDma(3)
+    - name: IrqHandlerTimer0Overflow
+      address:
+        NA: 0x2078A40
+      description: |-
+        IRQ handler for interrupt type 3, Timer 0 Overflow (see https://problemkaputt.de/gbatek.htm#dsinterrupts).
+        
+        Calls IrqHandleTimerOverflowAndDma(4)
+    - name: IrqHandlerTimer1Overflow
+      address:
+        NA: 0x2078A50
+      description: |-
+        IRQ handler for interrupt type 4, Timer 1 Overflow (see https://problemkaputt.de/gbatek.htm#dsinterrupts).
+        
+        Calls IrqHandleTimerOverflowAndDma(5)
+    - name: IrqHandlerTimer2Overflow
+      address:
+        NA: 0x2078A60
+      description: |-
+        IRQ handler for interrupt type 5, Timer 2 Overflow (see https://problemkaputt.de/gbatek.htm#dsinterrupts).
+        
+        Calls IrqHandleTimerOverflowAndDma(6)
+    - name: IrqHandlerTimer3Overflow
+      address:
+        NA: 0x2078A70
+      description: |-
+        IRQ handler for interrupt type 6, Timer 3 Overflow (see https://problemkaputt.de/gbatek.htm#dsinterrupts).
+        
+        Calls IrqHandleTimerOverflowAndDma(7)
     - name: OS_GetLockID
       address:
         EU: 0x20793C4
@@ -10946,6 +11056,10 @@ arm9:
         Returns the value of the control register for hardware timer 0
         
         return: Value of the control register
+    - name: IrqHandlerLcdVCounterMatch
+      address:
+        NA: 0x207B5CC
+      description: "IRQ handler for interrupt type 2, LCD V-Counter Match (see https://problemkaputt.de/gbatek.htm#dsinterrupts)."
     - name: ClearIrqFlag
       address:
         EU: 0x207BB68
@@ -11159,6 +11273,10 @@ arm9:
         r0: desired value
         r1: ptr
         return: previous value
+    - name: IrqHandlerIpcRecvFifoNotEmpty
+      address:
+        NA: 0x207DBA8
+      description: "IRQ handler for interrupt type 18, IPC Recv FIFO Not Empty (see https://problemkaputt.de/gbatek.htm#dsinterrupts)."
     - name: FileInit
       address:
         EU: 0x207F77C
@@ -11989,6 +12107,12 @@ arm9:
         NA: 0x800
         JP: 0x800
       description: "The header of the DS cartridge secure area. See https://problemkaputt.de/gbatek.htm#dscartridgesecurearea"
+    - name: DTCM_BASE
+      address:
+        NA: 0x2000B7C
+      length:
+        NA: 0x4
+      description: "The base offset of the DTCM, configured by the game with mcr p15,0,*,cr9,cr1,0"
     - name: START_MODULE_PARAMS
       address:
         EU: 0x2000BA0
